@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+football_env/
+index2.html/
+
+annotated/
+# Data
+datasets/
+outputs/
+uploads/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store

@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FootballIQ · v4.3</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#06080c; --panel:#0c1420; --panel2:#0f1c2e; --border:#162238;
+  --accent:#00e5ff; --green:#00e676; --red:#ff3354; --yellow:#ffab00;
+  --purple:#c77dff; --orange:#ff7043; --muted:#4a6080; --text:#c8d8e8;
+  --mono:'Share Tech Mono',monospace; --cond:'Barlow Condensed',sans-serif;
+  --sans:'Barlow',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background:linear-gradient(rgba(0,229,255,.018)1px,transparent 1px),
+             linear-gradient(90deg,rgba(0,229,255,.018)1px,transparent 1px);
+  background-size:36px 36px;pointer-events:none;z-index:0;}
+
+/* ── LAYOUT ── */
+#root{position:relative;z-index:1;display:grid;grid-template-rows:52px 1fr;height:100vh;}
+#header{display:flex;align-items:center;gap:14px;padding:0 24px;
+  border-bottom:1px solid var(--border);background:linear-gradient(90deg,#09111e,#0d1a2c);}
+#main{display:grid;grid-template-columns:310px 1fr;overflow:hidden;}
+
+/* ── HEADER ── */
+.logo{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--accent);
+  letter-spacing:.12em;text-shadow:0 0 20px rgba(0,229,255,.4);}
+.logo span{color:var(--green);}
+.ver{font-family:var(--mono);font-size:10px;background:var(--accent);color:#000;
+  padding:2px 7px;border-radius:3px;font-weight:700;}
+.hsr{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;}
+#srv-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all .3s;}
+#srv-dot.ok{background:var(--green);box-shadow:0 0 10px var(--green);animation:blink 2s infinite;}
+#srv-dot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── SIDEBAR ── */
+aside{border-right:1px solid var(--border);overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:14px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+.sec-title{font-family:var(--mono);font-size:9px;letter-spacing:.22em;color:var(--muted);
+  text-transform:uppercase;padding-bottom:7px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+
+/* dropzone */
+#dropzone{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;
+  cursor:pointer;transition:all .2s;background:rgba(0,229,255,.02);}
+#dropzone.over{border-color:var(--accent);background:rgba(0,229,255,.07);}
+#dropzone .ico{font-size:28px;margin-bottom:6px;}
+#dropzone p{font-size:11px;color:var(--muted);}
+#dropzone input{display:none;}
+#upload-info{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6;}
+
+/* inputs */
+label{font-size:10px;color:var(--muted);display:block;margin-bottom:3px;}
+input[type=number],select{width:100%;background:#080e16;border:1px solid var(--border);
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:5px;outline:none;}
+input:focus,select:focus{border-color:var(--accent);}
+.field{display:flex;flex-direction:column;gap:3px;}
+.chkrow{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);}
+.chkrow input[type=checkbox]{width:auto;cursor:pointer;}
+
+/* buttons */
+button{cursor:pointer;border:none;border-radius:5px;font-family:var(--mono);transition:all .2s;}
+.btn-prime{background:var(--accent);color:#000;padding:9px 16px;font-size:11px;
+  width:100%;font-weight:700;letter-spacing:.08em;}
+.btn-prime:hover{filter:brightness(1.15);}
+.btn-prime:disabled{opacity:.35;cursor:default;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);
+  padding:7px 12px;font-size:10px;}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{background:rgba(0,229,255,.12);color:var(--accent);padding:4px 10px;font-size:10px;border-radius:4px;}
+.btn-sm:hover{background:rgba(0,229,255,.22);}
+.bgroup{display:flex;gap:6px;}
+.bgroup button{flex:1;}
+
+/* progress */
+.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:2px;width:0%;transition:width .4s;}
+.prog-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* player list */
+#player-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.pi{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+  border:1px solid var(--border);cursor:pointer;background:rgba(255,255,255,.02);transition:all .15s;}
+.pi:hover{border-color:var(--accent);background:rgba(0,229,255,.05);}
+.pi.active{border-color:var(--accent);background:rgba(0,229,255,.1);}
+.tdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pid-b{font-family:var(--mono);font-size:10px;background:var(--panel);padding:2px 7px;
+  border-radius:3px;color:var(--accent);min-width:42px;text-align:center;}
+.pi-info{font-size:10px;color:var(--muted);flex:1;}
+.pi-dist{font-family:var(--mono);font-size:10px;color:var(--text);}
+
+/* ── MAIN CONTENT ── */
+#content{display:flex;flex-direction:column;overflow:hidden;}
+
+/* tabs */
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;}
+.tab{padding:10px 18px;font-family:var(--mono);font-size:11px;cursor:pointer;color:var(--muted);
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+.panels{flex:1;overflow:hidden;}
+.panel{display:none;height:100%;overflow-y:auto;padding:20px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.panel.active{display:block;}
+
+/* ── FRAME VIEWER ── */
+#frame-viewer{background:#000;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  display:flex;flex-direction:column;}
+#frame-img-wrap{position:relative;background:#000;flex:1;min-height:280px;display:flex;align-items:center;justify-content:center;}
+#frame-img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
+#frame-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.7);font-family:var(--mono);font-size:12px;color:var(--muted);}
+#frame-controls{padding:10px 14px;border-top:1px solid var(--border);background:var(--panel);}
+.scrubber-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+#frame-scrubber{flex:1;height:5px;-webkit-appearance:none;appearance:none;
+  background:var(--border);border-radius:3px;outline:none;cursor:pointer;}
+#frame-scrubber::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--accent);cursor:pointer;}
+#frame-scrubber::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:none;}
+.ctrl-row{display:flex;align-items:center;gap:8px;}
+.ctrl-row button{font-size:14px;padding:4px 10px;background:rgba(0,229,255,.1);color:var(--accent);border-radius:5px;}
+.ctrl-row button:hover{background:rgba(0,229,255,.2);}
+#frame-info{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:auto;}
+.live-badge{font-family:var(--mono);font-size:10px;color:var(--green);margin-left:8px;
+  animation:blink 1s infinite;}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:14px 0;}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;transition:border .2s;}
+.stat-card:hover{border-color:var(--accent);}
+.st-lbl{font-size:9px;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;}
+.st-val{font-size:24px;font-weight:700;color:white;line-height:1;margin:3px 0 1px;}
+.st-unit{font-size:9px;color:var(--muted);}
+
+/* ── SPEED BARS ── */
+.spd-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.spd-lbl{width:52px;font-size:11px;color:var(--muted);font-family:var(--mono);}
+.spd-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden;}
+.spd-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+.spd-pct{width:35px;font-size:10px;font-family:var(--mono);text-align:right;}
+
+/* ── ZONE BARS ── */
+.zone-wrap{display:flex;gap:10px;margin-top:8px;}
+.zone-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.zone-outer{width:100%;height:72px;background:var(--border);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden;}
+.zone-inner{width:100%;border-radius:4px;transition:height .7s cubic-bezier(.4,0,.2,1);}
+.zone-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);}
+.zone-val{font-size:13px;font-weight:700;}
+
+/* ── IMAGE PANELS ── */
+.img-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+.img-ph{font-family:var(--mono);font-size:11px;color:var(--muted);padding:48px;text-align:center;}
+.img-panel img{width:100%;display:block;}
+.ip-head{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+/* ── RECOVERY ── */
+.rec-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;}
+.risk-badge{display:inline-block;padding:3px 14px;border-radius:4px;
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;}
+.risk-HIGH    {background:rgba(255,51,84,.15);color:var(--red);border:1px solid var(--red);}
+.risk-MODERATE{background:rgba(255,171,0,.15);color:var(--yellow);border:1px solid var(--yellow);}
+.risk-LOW     {background:rgba(0,230,118,.15);color:var(--green);border:1px solid var(--green);}
+.rec-list{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.rec-list li{font-size:13px;padding-left:16px;position:relative;}
+.rec-list li::before{content:'▸';position:absolute;left:0;color:var(--accent);}
+.workload-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.wl-item{background:var(--panel2);border-radius:6px;padding:10px;}
+.wl-lbl{font-size:9px;color:var(--muted);font-family:var(--mono);}
+.wl-val{font-size:18px;font-weight:700;color:white;}
+
+/* ── LOG ── */
+#log-out{background:#05080e;border:1px solid var(--border);border-radius:8px;
+  padding:12px;font-family:var(--mono);font-size:10px;line-height:1.8;
+  height:calc(100vh - 200px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.l-info{color:var(--accent);} .l-ok{color:var(--green);} .l-err{color:var(--red);} .l-warn{color:var(--yellow);}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- HEADER -->
+<header id="header">
+  <div class="logo">FOOTBALL<span>IQ</span></div>
+  <div class="ver">v4.3</div>
+  <div class="hsr">
+    <div id="srv-dot"></div>
+    <span id="srv-txt">connecting…</span>
+  </div>
+</header>
+
+<div id="main">
+
+<!-- SIDEBAR -->
+<aside>
+
+  <!-- Upload -->
+  <div>
+    <div class="sec-title">1 · Upload Video</div>
+    <div id="dropzone" onclick="document.getElementById('fi').click()">
+      <div class="ico">🎬</div>
+      <p>Drop .mp4 / .avi / .mov / .mkv<br>or click to browse</p>
+      <input type="file" id="fi" accept=".mp4,.avi,.mov,.mkv"/>
+    </div>
+    <div id="upload-info"></div>
+  </div>
+
+  <!-- Process -->
+  <div>
+    <div class="sec-title">2 · Process</div>
+    <div class="field">
+      <label>Skip every N frames (lower = slower, more detail)</label>
+      <input type="number" id="skip-n" value="2" min="1" max="10"/>
+    </div>
+    <div class="chkrow" style="margin-top:8px;">
+      <input type="checkbox" id="chk-stream"/>
+      <label style="margin:0;">Enable SSE live push</label>
+    </div>
+    <div class="chkrow" style="margin-top:4px;">
+      <input type="checkbox" id="chk-trail" checked/>
+      <label style="margin:0;">Show movement trails</label>
+    </div>
+    <button class="btn-prime" id="btn-proc" disabled style="margin-top:10px;"
+            onclick="startProcessing()">▶ Start Processing</button>
+  </div>
+
+  <!-- Progress -->
+  <div id="prog-wrap" style="display:none;">
+    <div class="sec-title">Progress</div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="prog-row"><span id="prog-status">Initialising…</span><span id="prog-pct">0%</span></div>
+  </div>
+
+  <!-- Players -->
+  <div>
+    <div class="sec-title">3 · Players <span id="p-count" style="color:var(--accent)"></span></div>
+    <div id="player-list"><div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Upload & process a video first</div></div>
+  </div>
+
+  <!-- Actions -->
+  <div>
+    <div class="sec-title">Actions</div>
+    <div class="bgroup">
+      <button class="btn-ghost" onclick="exportJSON()">⬇ Export</button>
+      <button class="btn-ghost" onclick="downloadVideo()">🎞 Video</button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- MAIN CONTENT -->
+<div id="content">
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="frames"  onclick="switchTab(this,'frames')">📹 Frames</div>
+    <div class="tab"        data-tab="overview" onclick="switchTab(this,'overview')">📊 Overview</div>
+    <div class="tab"        data-tab="heatmap"  onclick="switchTab(this,'heatmap')">🌡 Heatmap</div>
+    <div class="tab"        data-tab="recovery" onclick="switchTab(this,'recovery')">⚕ Recovery</div>
+    <div class="tab"        data-tab="card"     onclick="switchTab(this,'card')">🃏 Card</div>
+    <div class="tab"        data-tab="log"      onclick="switchTab(this,'log')">📋 Log</div>
+  </div>
+
+  <div class="panels">
+
+    <!-- ── FRAMES TAB ── -->
+    <div class="panel active" id="panel-frames">
+      <div id="frame-viewer">
+        <div id="frame-img-wrap">
+          <div id="frame-overlay">No frames yet — upload & process a video</div>
+          <img id="frame-img" src="" style="display:none;"/>
+        </div>
+        <div id="frame-controls">
+          <div class="scrubber-row">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Frame</span>
+            <input type="range" id="frame-scrubber" min="0" max="1000" value="0" oninput="scrubFrame(this.value)"/>
+            <span id="frame-num" style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:50px;">0</span>
+          </div>
+          <div class="ctrl-row">
+            <button onclick="prevFrame()" title="Previous">⏮</button>
+            <button onclick="togglePlay()" id="btn-play" title="Play/Pause">▶</button>
+            <button onclick="nextFrame()" title="Next">⏭</button>
+            <button onclick="jumpToLatest()" class="btn-sm">↓ Latest</button>
+            <div id="frame-info">– frames buffered</div>
+            <span id="live-badge" class="live-badge" style="display:none;">● LIVE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- live stream canvas (SSE) -->
+      <div class="img-panel" style="margin-top:16px;" id="sse-panel">
+        <div class="ip-head">
+          <span>📡 SSE Stream (enable before processing)</span>
+          <span id="sse-fps" style="color:var(--green);"></span>
+        </div>
+        <div id="sse-area"><div class="img-ph">Enable SSE streaming before clicking Process</div></div>
+      </div>
+    </div>
+
+    <!-- ── OVERVIEW TAB ── -->
+    <div class="panel" id="panel-overview">
+      <div id="ov-empty" style="font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:10px;">
+        ← Select a player from the sidebar
+      </div>
+      <div id="ov-detail" style="display:none;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="font-size:28px;font-weight:900;font-family:var(--cond);" id="ov-title">Player #—</div>
+          <div id="ov-team"></div>
+          <div id="ov-zone" style="font-family:var(--mono);font-size:10px;color:var(--muted);"></div>
+        </div>
+        <div class="stat-grid" id="stat-grid"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+          <div class="img-panel" style="margin:0;">
+            <div class="ip-head"><span>⚡ Speed Profile</span></div>
+            <div style="padding:14px;" id="spd-profile"></div>
+          </div>
+          <div class="img-panel" style="margin:0;">
+            <div class="ip-head"><span>🗺 Zone Distribution</span></div>
+            <div style="padding:14px;" id="zone-bars"></div>
+          </div>
+        </div>
+        <!-- player crop -->
+        <div class="img-panel" style="margin-top:16px;">
+          <div class="ip-head">
+            <span>👤 Player Appearance</span>
+            <button class="btn-sm" onclick="loadCrop()">Load Crop</button>
+          </div>
+          <div id="crop-area"><div class="img-ph">Click Load Crop</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HEATMAP TAB ── -->
+    <div class="panel" id="panel-heatmap">
+      <div class="img-panel">
+        <div class="ip-head">
+          <span>🌡 Movement Heatmap</span>
+          <div class="bgroup">
+            <button class="btn-sm" onclick="loadHeatmap('server')">Server Render</button>
+            <button class="btn-sm" onclick="loadHeatmap('canvas')">Canvas Render</button>
+          </div>
+        </div>
+        <div id="heatmap-area"><div class="img-ph">Select a player, then choose a render mode</div></div>
+      </div>
+    </div>
+
+    <!-- ── RECOVERY TAB ── -->
+    <div class="panel" id="panel-recovery">
+      <div id="rec-empty" style="font-family:var(--mono);font-size:11px;color:var(--muted);">← Select a player</div>
+      <div id="rec-detail" style="display:none;"></div>
+    </div>
+
+    <!-- ── CARD TAB ── -->
+    <div class="panel" id="panel-card">
+      <div class="img-panel">
+        <div class="ip-head">
+          <span>🃏 Full Performance Card</span>
+          <button class="btn-sm" onclick="loadCard()">Generate</button>
+        </div>
+        <div id="card-area"><div class="img-ph">Select a player and click Generate</div></div>
+      </div>
+    </div>
+
+    <!-- ── LOG TAB ── -->
+    <div class="panel" id="panel-log">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="sec-title" style="border:none;margin:0;">Console Log</div>
+        <button class="btn-ghost" onclick="document.getElementById('log-out').innerHTML=''">Clear</button>
+      </div>
+      <div id="log-out"></div>
+    </div>
+
+  </div><!-- /panels -->
+</div><!-- /content -->
+
+</div><!-- /main -->
+</div><!-- /root -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  FootballIQ UI  v4.3
+// ═══════════════════════════════════════════════════════
+const BASE = 'http://localhost:8000';
+let sessionId     = null;
+let currentPlayer = null;
+let pollTimer     = null;
+let frameTimer    = null;
+let playTimer     = null;
+let isPlaying     = false;
+let maxFrameIdx   = 0;
+let sseSource     = null;
+let sseFps        = 0;
+let sseFpsTs      = Date.now();
+
+// ── Utility ───────────────────────────────────────────
+function log(msg, cls='info') {
+  const el  = document.getElementById('log-out');
+  const ts  = new Date().toLocaleTimeString();
+  el.innerHTML += `<div class="l-${cls}">[${ts}] ${msg}</div>`;
+  el.scrollTop  = el.scrollHeight;
+}
+
+async function api(path, opts={}) {
+  try {
+    const r = await fetch(BASE+path, opts);
+    const j = await r.json().catch(()=>({error:'non-JSON'}));
+    if (!r.ok) throw new Error(j.detail||j.error||r.statusText);
+    return j;
+  } catch(e) {
+    log(`${path}: ${e.message}`,'err');
+    throw e;
+  }
+}
+
+// ── Health ────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const j = await api('/api/health');
+    document.getElementById('srv-dot').className = 'ok';
+    document.getElementById('srv-txt').textContent = `healthy · ${j.gpu}`;
+    log(`Server online · ${j.gpu}`,'ok');
+  } catch {
+    document.getElementById('srv-dot').className = 'err';
+    document.getElementById('srv-txt').textContent = 'offline';
+    log('Server offline — run: python api_server.py','err');
+  }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+// ── Tab switching ─────────────────────────────────────
+function switchTab(el, name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if (name==='recovery' && currentPlayer) loadRecovery();
+  if (name==='heatmap'  && currentPlayer) loadHeatmap('server');
+}
+
+// ── Drag & drop upload ────────────────────────────────
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fi').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(file) {
+  if (!file) return;
+  log(`Uploading ${file.name} (${(file.size/1e6).toFixed(1)} MB)`,'info');
+  document.getElementById('upload-info').textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('video', file);
+  try {
+    const j = await fetch(`${BASE}/api/upload`,{method:'POST',body:fd}).then(r=>r.json());
+    if (!j.success) throw new Error(j.detail||'upload failed');
+    sessionId = j.session_id;
+    const vi  = j.video_info;
+    document.getElementById('upload-info').innerHTML =
+      `<span style="color:var(--green)">✓ ${j.filename}</span><br>`+
+      `<span>${vi.width}×${vi.height} · ${vi.fps}fps · ${vi.duration_seconds}s · ${vi.total_frames}f</span>`;
+    document.getElementById('btn-proc').disabled = false;
+    log(`Upload OK · session ${sessionId.slice(0,8)}`,'ok');
+    // update scrubber max
+    if (vi.total_frames) {
+      document.getElementById('frame-scrubber').max = vi.total_frames;
+      maxFrameIdx = vi.total_frames;
+    }
+  } catch(e) {
+    document.getElementById('upload-info').textContent = `Error: ${e.message}`;
+    log(`Upload failed: ${e.message}`,'err');
+  }
+}
+
+// ── Process ───────────────────────────────────────────
+async function startProcessing() {
+  if (!sessionId) return;
+  const skipN  = +document.getElementById('skip-n').value||2;
+  const stream = document.getElementById('chk-stream').checked;
+  log(`Processing  skip=${skipN}  sse=${stream}`,'info');
+  document.getElementById('btn-proc').disabled = true;
+  document.getElementById('prog-wrap').style.display = '';
+  try {
+    const j = await api('/api/process',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:sessionId,process_every_n:skipN,enable_streaming:stream,show_trails:document.getElementById('chk-trail').checked})
+    });
+    log(`Processing started`,'ok');
+    if (stream && j.stream_url) setupSSE(j.stream_url);
+    pollProgress();
+    startFramePolling();
+  } catch(e) {
+    document.getElementById('btn-proc').disabled = false;
+    log(`Process error: ${e.message}`,'err');
+  }
+}
+
+// ── Progress polling ──────────────────────────────────
+function pollProgress() {
+  pollTimer = setInterval(async()=>{
+    try {
+      const j = await api(`/api/status/${sessionId}`);
+      const p = j.progress||0;
+      document.getElementById('prog-fill').style.width  = p+'%';
+      document.getElementById('prog-pct').textContent   = p+'%';
+      document.getElementById('prog-status').textContent = j.status||'…';
+      // update frame count badge
+      if (j.frames_ready>0)
+        document.getElementById('frame-info').textContent = `${j.frames_ready} frames buffered`;
+      if (j.status==='processed') {
+        clearInterval(pollTimer);
+        log(`Done · ${j.total_players} players`,'ok');
+        loadPlayerList();
+        stopFramePolling();
+      } else if (j.status==='error') {
+        clearInterval(pollTimer); stopFramePolling();
+        log(`Error: ${j.error}`,'err');
+      }
+    } catch { clearInterval(pollTimer); stopFramePolling(); }
+  },1500);
+}
+
+// ── Frame polling (latest annotated JPEG) ────────────
+let framePollActive = false;
+let curFrameIdx     = 0;
+
+function startFramePolling() {
+  if (framePollActive) return;
+  framePollActive = true;
+  document.getElementById('live-badge').style.display='';
+  pollLatestFrame();
+}
+
+function stopFramePolling() {
+  framePollActive = false;
+  document.getElementById('live-badge').style.display='none';
+}
+
+async function pollLatestFrame() {
+  if (!framePollActive || !sessionId) return;
+  try {
+    const az = await api(`/api/frames/${sessionId}/count`).catch(()=>({count:0}));
+    if (az.count > 0) {
+      const url = `${BASE}/api/frames/${sessionId}/latest?t=${Date.now()}`;
+      showFrame(url, az.count);
+    }
+  } catch {}
+  if (framePollActive) setTimeout(pollLatestFrame, 100);  // ~10fps
+}
+
+function showFrame(url, totalCount) {
+  const img = document.getElementById('frame-img');
+  const ov  = document.getElementById('frame-overlay');
+  img.onload = ()=>{ img.style.display='block'; ov.style.display='none'; };
+  img.src = url;
+  if (totalCount !== undefined) {
+    document.getElementById('frame-info').textContent = `${totalCount} frames buffered`;
+    document.getElementById('frame-scrubber').max = totalCount * 2;  // rough guess
+    maxFrameIdx = totalCount * 2;
+  }
+}
+
+function scrubFrame(val) {
+  if (!sessionId) return;
+  curFrameIdx = parseInt(val);
+  document.getElementById('frame-num').textContent = val;
+  const url = `${BASE}/api/frames/${sessionId}/at/${curFrameIdx}?t=${Date.now()}`;
+  showFrame(url);
+}
+
+function prevFrame() {
+  const s = document.getElementById('frame-scrubber');
+  s.value = Math.max(0, parseInt(s.value)-2);
+  scrubFrame(s.value);
+}
+
+function nextFrame() {
+  const s = document.getElementById('frame-scrubber');
+  s.value = Math.min(maxFrameIdx, parseInt(s.value)+2);
+  scrubFrame(s.value);
+}
+
+function jumpToLatest() {
+  if (!sessionId) return;
+  stopFramePolling();
+  startFramePolling();
+}
+
+function togglePlay() {
+  isPlaying = !isPlaying;
+  document.getElementById('btn-play').textContent = isPlaying ? '⏸' : '▶';
+  if (isPlaying) playFrames(); else clearTimeout(playTimer);
+}
+
+function playFrames() {
+  if (!isPlaying) return;
+  nextFrame();
+  playTimer = setTimeout(playFrames, 80);  // ~12fps playback
+}
+
+// ── SSE stream ────────────────────────────────────────
+function setupSSE(url) {
+  if (sseSource) sseSource.close();
+  const area = document.getElementById('sse-area');
+  area.innerHTML = `<img id="sse-img" style="width:100%;display:block;"
+    src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="/>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:6px 14px;"
+         id="sse-info">Connecting…</div>`;
+  sseSource = new EventSource(BASE+url);
+  let fc=0;
+  sseSource.onmessage = e=>{
+    const d=JSON.parse(e.data);
+    if (d.type==='frame') {
+      document.getElementById('sse-img').src='data:image/jpeg;base64,'+d.data;
+      fc++;
+      const now=Date.now();
+      if (now-sseFpsTs>1000) {
+        document.getElementById('sse-fps').textContent=`${fc} fps`;
+        document.getElementById('sse-info').textContent=`Streaming @ ${fc} fps`;
+        fc=0; sseFpsTs=now;
+      }
+    } else if (d.type==='end') {
+      document.getElementById('sse-info').textContent='Stream ended';
+      sseSource.close(); log('SSE stream ended','ok');
+    }
+  };
+  sseSource.onerror=()=>log('SSE error','err');
+  log(`SSE connected: ${url}`,'info');
+}
+
+// ── Player list ───────────────────────────────────────
+async function loadPlayerList() {
+  try {
+    const j = await api(`/api/session/${sessionId}/players`);
+    document.getElementById('p-count').textContent=`(${j.total_players})`;
+    const list = document.getElementById('player-list');
+    list.innerHTML='';
+    j.players.sort((a,b)=>a.player_id-b.player_id).forEach(p=>{
+      const div=document.createElement('div');
+      div.className='pi'; div.dataset.pid=p.player_id;
+      const tc=p.team===0?'#ebaa32':p.team===1?'#6a8fff':'#888';
+      div.innerHTML=`
+        <div class="tdot" style="background:${tc}"></div>
+        <div class="pid-b">#${p.player_id}</div>
+        <div class="pi-info">${p.stats.position||'—'}</div>
+        <div class="pi-dist">${p.stats.total_distance_km||0}km</div>`;
+      div.onclick=()=>selectPlayer(p.player_id, p.stats);
+      list.appendChild(div);
+    });
+  } catch(e){ log(`Players: ${e.message}`,'err'); }
+}
+
+// ── Select player ─────────────────────────────────────
+async function selectPlayer(pid, cachedStats) {
+  currentPlayer = pid;
+  document.querySelectorAll('.pi').forEach(el=>el.classList.toggle('active',+el.dataset.pid===pid));
+  try {
+    const j = await api(`/api/player/${pid}/stats?session_id=${sessionId}`);
+    renderOverview(pid, j.stats);
+    // auto-load recovery
+    loadRecovery();
+  } catch {
+    if (cachedStats) renderOverview(pid, cachedStats);
+  }
+}
+
+// ── Overview ──────────────────────────────────────────
+function renderOverview(pid, s) {
+  document.getElementById('ov-empty').style.display='none';
+  document.getElementById('ov-detail').style.display='';
+  document.getElementById('ov-title').textContent=`Player #${pid}`;
+  const team=s.team;
+  const tc=team===0?'#ebaa32':team===1?'#6a8fff':'#888';
+  const tb=document.getElementById('ov-team');
+  tb.innerHTML=`<span class="risk-badge" style="background:${tc}22;color:${tc};border:1px solid ${tc};">
+    TEAM ${team===0?'A':team===1?'B':'?'}</span>`;
+  document.getElementById('ov-zone').textContent=s.position+' zone';
+
+  const metrics=[
+    {l:'Total Dist',   v:s.total_distance_km,          u:'km',   c:'#00e5ff'},
+    {l:'Hi-Int Dist',  v:s.high_intensity_distance_km, u:'km',   c:'#00e676'},
+    {l:'Max Speed',    v:s.max_speed,                  u:'km/h', c:'#ffab00'},
+    {l:'Avg Speed',    v:s.avg_speed,                  u:'km/h', c:'#c77dff'},
+    {l:'Sprints',      v:s.sprint_count,               u:'',     c:'#ff3354'},
+    {l:'Accels',       v:s.accelerations,              u:'',     c:'#ff7043'},
+    {l:'Decels',       v:s.decelerations,              u:'',     c:'#5a7a90'},
+    {l:'Frames',       v:s.total_frames,               u:'',     c:'#4a6080'},
+  ];
+  document.getElementById('stat-grid').innerHTML=metrics.map(m=>`
+    <div class="stat-card">
+      <div class="st-lbl">${m.l}</div>
+      <div class="st-val" style="color:${m.c}">${m.v}</div>
+      <div class="st-unit">${m.u}</div>
+    </div>`).join('');
+
+  // Speed profile (estimated distribution)
+  const sp=s.sprint_count; const dur=s.duration_seconds||1;
+  const sprintP=Math.min(sp*3/dur*100,14);
+  const fastP=Math.min(s.high_intensity_distance_km/(s.total_distance_km||1)*40,20);
+  const runP=Math.min((s.avg_speed/25)*30,25);
+  const rem=Math.max(0,100-sprintP-fastP-runP);
+  const jogP=rem*.45; const walkP=rem*.55;
+  const spds=[
+    {l:'Walk',   p:walkP,  c:'#3d5c72'},
+    {l:'Jog',    p:jogP,   c:'#5a7a90'},
+    {l:'Run',    p:runP,   c:'#00e5ff'},
+    {l:'Fast',   p:fastP,  c:'#ffab00'},
+    {l:'Sprint', p:sprintP,c:'#ff3354'},
+  ];
+  document.getElementById('spd-profile').innerHTML=spds.map(x=>`
+    <div class="spd-row">
+      <span class="spd-lbl">${x.l}</span>
+      <div class="spd-track"><div class="spd-fill" style="width:${x.p.toFixed(1)}%;background:${x.c};"></div></div>
+      <span class="spd-pct" style="color:${x.c}">${x.p.toFixed(0)}%</span>
+    </div>`).join('');
+
+  // Zone bars
+  const pz=s.position_zone||{defensive:33,middle:34,attacking:33};
+  const zs=[{l:'DEF',v:pz.defensive,c:'#00e5ff'},{l:'MID',v:pz.middle,c:'#00e676'},{l:'ATK',v:pz.attacking,c:'#ff3354'}];
+  document.getElementById('zone-bars').innerHTML=`<div class="zone-wrap">${zs.map(z=>`
+    <div class="zone-col">
+      <div class="zone-outer"><div class="zone-inner" style="height:${z.v}%;background:${z.c};"></div></div>
+      <div class="zone-lbl">${z.l}</div>
+      <div class="zone-val" style="color:${z.c}">${z.v}%</div>
+    </div>`).join('')}</div>`;
+}
+
+// ── Player crop ───────────────────────────────────────
+async function loadCrop() {
+  if (!currentPlayer) return log('No player selected','warn');
+  const area=document.getElementById('crop-area');
+  area.innerHTML='<div class="img-ph">Loading…</div>';
+  try {
+    const url=`${BASE}/api/player/${currentPlayer}/crop?session_id=${sessionId}&t=${Date.now()}`;
+    area.innerHTML=`<img src="${url}" style="max-height:300px;display:block;margin:auto;"/>`;
+  } catch(e){ area.innerHTML=`<div class="img-ph">${e.message}</div>`; }
+}
+
+// ── Heatmap ───────────────────────────────────────────
+async function loadHeatmap(mode) {
+  if (!currentPlayer) return log('No player selected','warn');
+  const area=document.getElementById('heatmap-area');
+
+  if (mode==='server') {
+    area.innerHTML='<div class="img-ph">Generating heatmap…</div>';
+    const url=`${BASE}/api/player/${currentPlayer}/heatmap?session_id=${sessionId}&t=${Date.now()}`;
+    const img=new Image();
+    img.onload=()=>{ area.innerHTML=''; area.appendChild(img); img.style.width='100%'; };
+    img.onerror=()=>{ area.innerHTML='<div class="img-ph" style="color:var(--red)">Heatmap failed — need more tracking data</div>'; };
+    img.src=url;
+    log(`Heatmap requested for #${currentPlayer}`,'info');
+    return;
+  }
+
+  // canvas mode
+  try {
+    const j=await api(`/api/player/${currentPlayer}/stats?session_id=${sessionId}`);
+    const pos=j.stats.positions||[];
+    if (!pos.length) return log('No position data','warn');
+    area.innerHTML='<canvas id="hm-canvas" style="width:100%;border-radius:0 0 10px 10px;"></canvas>';
+    const c=document.getElementById('hm-canvas');
+    c.width=840; c.height=544;
+    renderCanvasHeatmap(c, pos);
+    log(`Canvas heatmap: ${pos.length} pts`,'ok');
+  } catch(e){ area.innerHTML=`<div class="img-ph">${e.message}</div>`; }
+}
+
+function renderCanvasHeatmap(canvas, positions) {
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.fillStyle='#0b2016'; ctx.fillRect(0,0,W,H);
+  // pitch lines
+  ctx.strokeStyle='#2a5a3a'; ctx.lineWidth=1.5;
+  ctx.strokeRect(4,4,W-8,H-8);
+  ctx.beginPath(); ctx.moveTo(W/2,4); ctx.lineTo(W/2,H-4); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,H/2,60,0,Math.PI*2); ctx.stroke();
+  // penalty boxes
+  [[0,(H-268)/2,110,268],[W-114,(H-268)/2,110,268]].forEach(([x,y,w,h])=>ctx.strokeRect(x,y,w,h));
+  // heat
+  positions.forEach(([mx,my])=>{
+    const px=mx/105*W, py=(1-my/68)*H;
+    const g=ctx.createRadialGradient(px,py,0,px,py,22);
+    g.addColorStop(0,'rgba(0,229,255,.2)');
+    g.addColorStop(.5,'rgba(0,80,200,.08)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(px,py,22,0,Math.PI*2); ctx.fill();
+  });
+  // centroid
+  const cx=positions.reduce((a,p)=>a+p[0],0)/positions.length;
+  const cy=positions.reduce((a,p)=>a+p[1],0)/positions.length;
+  ctx.fillStyle='#ffcc00';
+  ctx.beginPath(); ctx.arc(cx/105*W,(1-cy/68)*H,6,0,Math.PI*2); ctx.fill();
+  // zone labels
+  ctx.fillStyle='#3d5c72'; ctx.font='13px monospace'; ctx.textAlign='center';
+  ctx.fillText('DEF',W*.167,H-8); ctx.fillText('MID',W*.5,H-8); ctx.fillText('ATK',W*.833,H-8);
+}
+
+// ── Recovery ──────────────────────────────────────────
+async function loadRecovery() {
+  if (!currentPlayer) return;
+  const empty  = document.getElementById('rec-empty');
+  const detail = document.getElementById('rec-detail');
+  try {
+    const j = await api(`/api/player/${currentPlayer}/recovery?session_id=${sessionId}`);
+    empty.style.display  = 'none';
+    detail.style.display = '';
+
+    const tier    = j.risk_tier || j.risk_level || 'LOW';
+    const overall = j.overall_risk ?? j.risk_score ?? 0;
+    const tierCol = tier==='HIGH'?'var(--red)':tier==='MODERATE'?'var(--yellow)':tier==='LOW'?'var(--green)':'#4a6080';
+    const wl      = j.workload || {};
+    const bands   = wl.speed_bands || {};
+    const tissues = j.tissue_scores || {};
+    const flags   = j.injury_flags  || [];
+    const sched   = j.schedule      || [];
+    const relief  = j.pain_relief   || [];
+    const recs    = j.recommendations || [];
+
+    // ── Tissue risk bars ──────────────────────────────────────────────────────
+    const tissueOrder = ['Hamstring','Quadriceps','Calf/Achilles','Hip Flexors','Knee/Ligament'];
+    const tissueColors = {'Hamstring':'#ff3354','Quadriceps':'#ff7043','Calf/Achilles':'#ffab00',
+                          'Hip Flexors':'#c77dff','Knee/Ligament':'#00e5ff'};
+    const tissueBars = tissueOrder.map(name => {
+      const score = tissues[name] ?? 0;
+      const col   = tissueColors[name] || '#8a9bb0';
+      const lbl   = score>=68?'HIGH':score>=45?'MOD':score>=25?'LOW':'MIN';
+      return `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <span style="font-size:11px;color:#c8d8e8;">${name}</span>
+          <span style="font-family:var(--mono);font-size:11px;color:${col};">${score.toFixed(0)}/100 · ${lbl}</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${score}%;background:${col};border-radius:4px;transition:width .6s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // ── Speed band breakdown ───────────────────────────────────────────────────
+    const bandCols = {walk:'#3d5c72',jog:'#5a7a90',run:'#00e5ff',fast:'#ffab00',sprint:'#ff3354'};
+    const bandBars = Object.entries(bands).map(([k,v])=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <span style="width:48px;font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:capitalize;">${k}</span>
+        <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${v}%;background:${bandCols[k]||'#888'};border-radius:3px;"></div>
+        </div>
+        <span style="width:36px;text-align:right;font-size:10px;font-family:var(--mono);color:${bandCols[k]||'#888'};">${v.toFixed(0)}%</span>
+      </div>`).join('');
+
+    // ── Injury flags ─────────────────────────────────────────────────────────
+    const flagHtml = flags.length ? flags.map(f=>`
+      <div style="background:rgba(255,51,84,.07);border:1px solid rgba(255,51,84,.25);
+                  border-radius:8px;padding:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:700;color:white;">${f.type}</span>
+          <span class="risk-badge risk-${f.severity}" style="font-size:9px;padding:1px 8px;">${f.severity}</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--red);margin-left:auto;">
+            ${f.probability_pct}% probability</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.5;">⚡ ${f.cause}</div>
+        <div style="margin-top:6px;">
+          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${f.score}%;background:var(--red);border-radius:3px;"></div>
+          </div>
+        </div>
+      </div>`).join('')
+      : `<div style="font-size:11px;color:var(--green);padding:10px;">✓ No significant injury flags detected</div>`;
+
+    // ── Schedule ─────────────────────────────────────────────────────────────
+    const schedHtml = sched.map(d=>{
+      const pct = parseFloat(d.intensity);
+      const col = pct===0?'var(--muted)':pct<40?'var(--green)':pct<70?'var(--yellow)':'var(--accent)';
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;
+                           border-bottom:1px solid var(--border);">
+        <div style="min-width:48px;font-family:var(--mono);font-size:10px;color:${col};padding-top:1px;">${d.label}</div>
+        <div style="flex:1;">
+          <div style="font-size:12px;color:white;margin-bottom:2px;">${d.activity}</div>
+          <div style="font-size:10px;color:var(--muted);">${d.notes}</div>
+        </div>
+        <div style="min-width:38px;text-align:right;font-family:var(--mono);font-size:11px;color:${col};">${d.intensity}</div>
+      </div>`;
+    }).join('');
+
+    // ── Pain relief ──────────────────────────────────────────────────────────
+    const reliefHtml = relief.map(r=>`
+      <div style="background:var(--panel2);border-radius:8px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:700;color:white;">${r.target}</span>
+          ${r.score>0?`<span style="font-family:var(--mono);font-size:10px;color:var(--muted);">risk ${r.score}/100</span>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);letter-spacing:.08em;">IMMEDIATE (0–6 h)</div>
+        <ul style="list-style:none;margin-bottom:8px;">${r.immediate.map(x=>`
+          <li style="font-size:12px;color:#c8d8e8;padding:2px 0 2px 14px;position:relative;">
+            <span style="position:absolute;left:0;color:var(--accent);">●</span>${x}</li>`).join('')}
+        </ul>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);letter-spacing:.08em;">NEXT 48 h</div>
+        <ul style="list-style:none;margin-bottom:8px;">${r.next_48h.map(x=>`
+          <li style="font-size:12px;color:#c8d8e8;padding:2px 0 2px 14px;position:relative;">
+            <span style="position:absolute;left:0;color:var(--green);">●</span>${x}</li>`).join('')}
+        </ul>
+        <div style="margin-top:6px;padding:8px;background:rgba(255,171,0,.08);border-radius:5px;
+                    border-left:2px solid var(--yellow);font-size:11px;color:var(--yellow);">
+          💊 ${r.medication}</div>
+      </div>`).join('');
+
+    detail.innerHTML = `
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+      <div style="font-size:26px;font-weight:900;font-family:var(--cond);">Player #${j.player_id}</div>
+      <div class="risk-badge risk-${tier}">${tier} RISK</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">${j.position} · ${overall.toFixed(1)}/100 overall</div>
+    </div>
+
+    <!-- Top KPI row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
+      <div class="wl-item"><div class="wl-lbl">OVERALL RISK</div>
+        <div class="wl-val" style="color:${tierCol};">${overall.toFixed(0)}<span style="font-size:11px;color:var(--muted);">/100</span></div></div>
+      <div class="wl-item"><div class="wl-lbl">REST DAYS</div>
+        <div class="wl-val" style="color:${tierCol};">${j.rest_days}<span style="font-size:11px;color:var(--muted);"> days</span></div></div>
+      <div class="wl-item"><div class="wl-lbl">MATCH READY</div>
+        <div class="wl-val" style="font-size:16px;">${j.next_match_ready||j.next_match_readiness||'—'}</div></div>
+      <div class="wl-item"><div class="wl-lbl">SPRINT COUNT</div>
+        <div class="wl-val">${wl.sprint_count??'—'}</div></div>
+    </div>
+
+    <!-- 2-col layout: tissue risks + workload -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+      <div class="img-panel" style="margin:0;">
+        <div class="ip-head"><span>🦵 Tissue Risk Scores</span></div>
+        <div style="padding:14px;">${tissueBars}</div>
+      </div>
+      <div>
+        <div class="img-panel" style="margin:0 0 10px;">
+          <div class="ip-head"><span>⚡ Workload Summary</span></div>
+          <div style="padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            ${[
+              ['Total Dist', (wl.total_distance_km||0)+' km'],
+              ['Hi-Int Dist', (wl.hi_intensity_km||0)+' km'],
+              ['VHI Dist', (wl.very_hi_intensity_km||0)+' km'],
+              ['Sprint Dist', (wl.sprint_distance_km||0)+' km'],
+              ['Hard Accels', wl.hard_accelerations??'—'],
+              ['Hard Decels', wl.hard_decelerations??'—'],
+              ['Dir. Changes', wl.direction_changes??'—'],
+              ['Max Speed', (wl.max_speed_kmh||0)+' km/h'],
+            ].map(([l,v])=>`<div class="wl-item" style="padding:7px;">
+              <div class="wl-lbl">${l}</div>
+              <div style="font-size:15px;font-weight:700;color:white;">${v}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+        <div class="img-panel" style="margin:0;">
+          <div class="ip-head"><span>🏃 Speed Bands</span></div>
+          <div style="padding:12px;">${bandBars || '<div style="color:var(--muted);font-size:11px;">No speed data</div>'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Injury flags -->
+    <div class="img-panel" style="margin-bottom:14px;">
+      <div class="ip-head"><span>⚠️ Injury Risk Flags</span></div>
+      <div style="padding:14px;">${flagHtml}</div>
+    </div>
+
+    <!-- Return-to-train schedule -->
+    <div class="img-panel" style="margin-bottom:14px;">
+      <div class="ip-head"><span>📅 Return-to-Train Schedule</span></div>
+      <div style="padding:14px;">${schedHtml||'<div style="color:var(--muted);font-size:11px;">No schedule available</div>'}</div>
+    </div>
+
+    <!-- Pain relief -->
+    <div class="img-panel" style="margin-bottom:14px;">
+      <div class="ip-head"><span>💊 Targeted Pain-Relief Protocol</span></div>
+      <div style="padding:14px;">${reliefHtml}</div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="img-panel" style="margin-bottom:14px;">
+      <div class="ip-head"><span>📋 Personalised Recommendations</span></div>
+      <div style="padding:14px;">
+        <ul class="rec-list">${recs.map(r=>`<li>${r}</li>`).join('')}</ul>
+      </div>
+    </div>
+
+    <!-- Nutrition -->
+    <div style="padding:12px 14px;background:rgba(0,229,255,.05);border-radius:8px;
+                border-left:3px solid var(--accent);font-size:12px;line-height:1.7;margin-bottom:14px;">
+      🥗 <strong style="color:var(--accent);">Nutrition & Supplements:</strong> ${j.nutrition_note||''}
+    </div>`;
+
+    log(`Recovery loaded #${j.player_id} · ${tier} · ${overall.toFixed(1)}/100`,'ok');
+  } catch(e) {
+    empty.style.display  = '';
+    detail.style.display = 'none';
+    log(`Recovery error: ${e.message}`,'warn');
+  }
+}
+
+// ── Player card ───────────────────────────────────────
+async function loadCard() {
+  if (!currentPlayer) return log('No player selected','warn');
+  const area=document.getElementById('card-area');
+  area.innerHTML='<div class="img-ph">Generating player card…</div>';
+  try {
+    const url=`${BASE}/api/player/${currentPlayer}/card?session_id=${sessionId}&t=${Date.now()}`;
+    const img=new Image();
+    img.onload=()=>{ area.innerHTML=''; area.appendChild(img); img.style.width='100%'; };
+    img.onerror=()=>{ area.innerHTML='<div class="img-ph" style="color:var(--red)">Card generation failed</div>'; };
+    img.src=url;
+    log(`Card requested #${currentPlayer}`,'info');
+  } catch(e){ area.innerHTML=`<div class="img-ph">${e.message}</div>`; }
+}
+
+// ── Export ────────────────────────────────────────────
+function exportJSON() {
+  if (!sessionId) return log('No session','warn');
+  window.open(`${BASE}/api/export/${sessionId}`,'_blank');
+  log('Export triggered','info');
+}
+
+function downloadVideo() {
+  if (!sessionId) return log('No session','warn');
+  window.open(`${BASE}/api/video/${sessionId}`,'_blank');
+  log('Video download triggered','info');
+}
+
+log('FootballIQ v4.3 loaded','ok');
+log('Start: python api_server.py  →  http://localhost:8000','info');
+</script>
+</body>
+</html>
