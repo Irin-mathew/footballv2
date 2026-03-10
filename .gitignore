@@ -19,6 +19,8 @@ heatmaps/
 player_cards/
 outputs/
 uploads/
+heatmaps/
+recovery_card/
 # VS Code
 .vscode/
 *.pt
