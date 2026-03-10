@@ -59,7 +59,19 @@ except ImportError:
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+# 
+import os
+import gdown
 
+MODEL_PATH = "models/weights/best.pt"
+
+if not os.path.exists(MODEL_PATH):
+    os.makedirs("models/weights", exist_ok=True)
+
+    url = "https://drive.google.com/uc?id=1Ay483Zu2lrDohXAMAVgmhkegqe7Rpyfy"
+
+    gdown.download(url, MODEL_PATH, quiet=False)
+#  
 # ── Module imports ────────────────────────────────────────────────────────────
 # Folder layout:
 #   footballv2/

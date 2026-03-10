@@ -13,9 +13,15 @@ annotated/
 datasets/
 outputs/
 uploads/
-
+crops/
+crops/
+heatmaps/
+player_cards/
+outputs/
+uploads/
 # VS Code
 .vscode/
+*.pt
 
 # OS
 .DS_Store
