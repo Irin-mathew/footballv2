@@ -1,7 +1,7 @@
 
 """
-FootballIQ API Server v5.0
-==========================
+FootballIQ API Server v5.1 - React Native Compatible
+=====================================================
 Run:  python api_server.py            → http://localhost:8000
       python api_server.py --port 9000
 
@@ -40,6 +40,9 @@ GET  /api/health                         Health + module status
 import os, sys, uuid, threading, time, json, base64, traceback, shutil, argparse
 from pathlib import Path
 from datetime import datetime
+import tempfile
+import os
+import gdown
 
 try:
     from fastapi import FastAPI, UploadFile, File, HTTPException, Request
@@ -59,9 +62,6 @@ except ImportError:
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# 
-import os
-import gdown
 
 MODEL_PATH = "models/weights/best.pt"
 
@@ -71,24 +71,12 @@ if not os.path.exists(MODEL_PATH):
     url = "https://drive.google.com/uc?id=1Ay483Zu2lrDohXAMAVgmhkegqe7Rpyfy"
 
     gdown.download(url, MODEL_PATH, quiet=False)
-#  
+
 # ── Module imports ────────────────────────────────────────────────────────────
-# Folder layout:
-#   footballv2/
-#     api_server.py
-#     football_analyzer_fixed.py
-#     index.html
-#     models/weights/best.pt
-#     modules/
-#       injury_predictor.py
-#       recovery_planner.py
-#       recovery_card_generator.py
-#       heatmap_generator.py
-#       ...
 HERE = Path(__file__).parent
 MODULES_DIR = HERE / 'modules'
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(MODULES_DIR))   # makes "from injury_predictor import ..." work
+sys.path.insert(0, str(MODULES_DIR))
 
 try:
     from modules.injury_predictor import InjuryPredictor
@@ -117,7 +105,7 @@ except Exception as _e:
 _HAS_MODULES = bool(_injury_predictor and _recovery_planner)
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
-app = FastAPI(title="FootballIQ API", version="5.0")
+app = FastAPI(title="FootballIQ API", version="5.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
@@ -304,7 +292,7 @@ async def health():
         pass
     return JSONResponse({
         "status":    "healthy",
-        "version":   "5.0",
+        "version":   "5.1",
         "gpu":       gpu,
         "modules": {
             "injury_predictor": _injury_predictor is not None,
@@ -316,50 +304,150 @@ async def health():
 
 
 @app.post("/api/upload")
-async def upload_video(video: UploadFile = File(...)):
-    if not video.filename:
-        raise HTTPException(400, detail="No file provided")
-    ext = video.filename.rsplit('.', 1)[-1].lower() if '.' in video.filename else ''
-    if ext not in {'mp4', 'avi', 'mov', 'mkv'}:
-        raise HTTPException(400, detail=f"Unsupported format: .{ext}")
-
+async def upload_video(request: Request):
+    """
+    React Native compatible upload endpoint.
+    Accepts multipart/form-data with field name 'video'
+    """
     session_id = str(uuid.uuid4())
-    dest = UPLOAD_FOLDER / f"{session_id}_{video.filename}"
-    with open(dest, 'wb') as f:
-        shutil.copyfileobj(video.file, f)
-
-    info = {}
-    if _HAS_CV2:
-        try:
-            cap   = cv2.VideoCapture(str(dest))
-            fps   = cap.get(cv2.CAP_PROP_FPS) or 30.0
-            total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            info  = {
-                'fps':              round(fps, 2),
-                'width':            int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                'height':           int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                'total_frames':     total,
-                'duration_seconds': round(total / fps, 2),
-            }
-            cap.release()
-        except Exception:
-            pass
-
-    sessions[session_id] = {
-        'video_path':    str(dest),
-        'filename':      video.filename,
-        'status':        'uploaded',
-        'progress':      0,
-        'video_info':    info,
-        'pending_names': {},
-    }
-    return JSONResponse({
-        'success':    True,
-        'session_id': session_id,
-        'video_path': str(dest),
-        'video_info': info,
-        'filename':   video.filename,
-    })
+    
+    try:
+        # Try to parse as multipart/form-data
+        form = await request.form()
+        
+        # Look for the video file in the form data
+        video_file = None
+        filename = None
+        
+        # Check each field in the form
+        for field_name, field_value in form.items():
+            # Check if this field has file attributes (UploadFile)
+            if hasattr(field_value, 'filename') and hasattr(field_value, 'read'):
+                video_file = field_value
+                filename = field_value.filename
+                print(f"[API] Found file upload with field: {field_name}, filename: {filename}")
+                break
+            
+            # Handle React Native's special format where file info is in a dict
+            elif isinstance(field_value, str) and field_name == 'video':
+                try:
+                    # Try to parse as JSON (React Native sometimes stringifies)
+                    file_info = json.loads(field_value)
+                    if isinstance(file_info, dict) and 'uri' in file_info:
+                        # This would require a different approach - the file content isn't here
+                        print(f"[API] Received file info JSON: {file_info}")
+                        raise HTTPException(400, detail="File content missing. Please send as multipart/form-data with file")
+                except json.JSONDecodeError:
+                    pass
+        
+        # If we didn't find a file with attributes, check if there's a raw file in request
+        if not video_file:
+            # Try to get the file from the 'video' field specifically
+            video_file = form.get('video')
+            if video_file and hasattr(video_file, 'filename'):
+                filename = video_file.filename
+        
+        # If still no file, try to read raw body as file
+        if not video_file:
+            body = await request.body()
+            if body and len(body) > 0:
+                # Assume the raw body is the video file
+                filename = f"upload_{session_id}.mp4"
+                dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+                with open(dest, 'wb') as f:
+                    f.write(body)
+                
+                print(f"[API] Saved raw upload as {filename}")
+                
+                # Extract video info
+                info = {}
+                if _HAS_CV2:
+                    try:
+                        cap = cv2.VideoCapture(str(dest))
+                        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        info = {
+                            'fps': round(fps, 2),
+                            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                            'total_frames': total,
+                            'duration_seconds': round(total / fps, 2),
+                        }
+                        cap.release()
+                    except Exception as e:
+                        print(f"[API] Could not extract video info: {e}")
+                
+                sessions[session_id] = {
+                    'video_path': str(dest),
+                    'filename': filename,
+                    'status': 'uploaded',
+                    'progress': 0,
+                    'video_info': info,
+                    'pending_names': {},
+                }
+                
+                return JSONResponse({
+                    'success': True,
+                    'session_id': session_id,
+                    'video_path': str(dest),
+                    'video_info': info,
+                    'filename': filename,
+                })
+            
+            raise HTTPException(400, detail="No video file found. Expected multipart/form-data with field 'video'")
+        
+        # We have a proper file object, save it
+        if not filename:
+            filename = f"video_{session_id}.mp4"
+        
+        dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+        
+        # Save the file
+        content = await video_file.read()
+        with open(dest, 'wb') as f:
+            f.write(content)
+        
+        print(f"[API] Saved uploaded file: {filename} ({len(content)} bytes)")
+        
+        # Extract video info
+        info = {}
+        if _HAS_CV2:
+            try:
+                cap = cv2.VideoCapture(str(dest))
+                fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                info = {
+                    'fps': round(fps, 2),
+                    'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                    'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                    'total_frames': total,
+                    'duration_seconds': round(total / fps, 2),
+                }
+                cap.release()
+            except Exception as e:
+                print(f"[API] Could not extract video info: {e}")
+        
+        sessions[session_id] = {
+            'video_path': str(dest),
+            'filename': filename,
+            'status': 'uploaded',
+            'progress': 0,
+            'video_info': info,
+            'pending_names': {},
+        }
+        
+        return JSONResponse({
+            'success': True,
+            'session_id': session_id,
+            'video_path': str(dest),
+            'video_info': info,
+            'filename': filename,
+        })
+        
+    except Exception as e:
+        print(f"[API] Upload error: {e}")
+        traceback.print_exc()
+        raise HTTPException(400, detail=f"Upload failed: {str(e)}")
 
 
 @app.post("/api/process")
@@ -729,7 +817,7 @@ async def serve_static(filepath: str):
 # ─────────────────────────────────────────────────────────────────────────────
 def _startup_check(port):
     print("\n" + "=" * 62)
-    print("  FootballIQ API v5.0")
+    print("  FootballIQ API v5.1 - React Native Compatible")
     print("=" * 62)
     for label, path in [
         ("index.html",                          HERE / 'index.html'),
