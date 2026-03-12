@@ -303,8 +303,155 @@ async def health():
     })
 
 
+# @app.post("/api/upload")
+# async def upload_video(request: Request):
+#     """
+#     React Native compatible upload endpoint.
+#     Accepts multipart/form-data with field name 'video'
+#     """
+#     session_id = str(uuid.uuid4())
+    
+#     try:
+#         # Try to parse as multipart/form-data
+#         form = await request.form()
+        
+#         # Look for the video file in the form data
+#         video_file = None
+#         filename = None
+        
+#         # Check each field in the form
+#         for field_name, field_value in form.items():
+#             # Check if this field has file attributes (UploadFile)
+#             if hasattr(field_value, 'filename') and hasattr(field_value, 'read'):
+#                 video_file = field_value
+#                 filename = field_value.filename
+#                 print(f"[API] Found file upload with field: {field_name}, filename: {filename}")
+#                 break
+            
+#             # Handle React Native's special format where file info is in a dict
+#             elif isinstance(field_value, str) and field_name == 'video':
+#                 try:
+#                     # Try to parse as JSON (React Native sometimes stringifies)
+#                     file_info = json.loads(field_value)
+#                     if isinstance(file_info, dict) and 'uri' in file_info:
+#                         # This would require a different approach - the file content isn't here
+#                         print(f"[API] Received file info JSON: {file_info}")
+#                         raise HTTPException(400, detail="File content missing. Please send as multipart/form-data with file")
+#                 except json.JSONDecodeError:
+#                     pass
+        
+#         # If we didn't find a file with attributes, check if there's a raw file in request
+#         if not video_file:
+#             # Try to get the file from the 'video' field specifically
+#             video_file = form.get('video')
+#             if video_file and hasattr(video_file, 'filename'):
+#                 filename = video_file.filename
+        
+#         # If still no file, try to read raw body as file
+#         if not video_file:
+#             body = await request.body()
+#             if body and len(body) > 0:
+#                 # Assume the raw body is the video file
+#                 filename = f"upload_{session_id}.mp4"
+#                 dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+#                 with open(dest, 'wb') as f:
+#                     f.write(body)
+                
+#                 print(f"[API] Saved raw upload as {filename}")
+                
+#                 # Extract video info
+#                 info = {}
+#                 if _HAS_CV2:
+#                     try:
+#                         cap = cv2.VideoCapture(str(dest))
+#                         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+#                         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#                         info = {
+#                             'fps': round(fps, 2),
+#                             'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+#                             'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+#                             'total_frames': total,
+#                             'duration_seconds': round(total / fps, 2),
+#                         }
+#                         cap.release()
+#                     except Exception as e:
+#                         print(f"[API] Could not extract video info: {e}")
+                
+#                 sessions[session_id] = {
+#                     'video_path': str(dest),
+#                     'filename': filename,
+#                     'status': 'uploaded',
+#                     'progress': 0,
+#                     'video_info': info,
+#                     'pending_names': {},
+#                 }
+                
+#                 return JSONResponse({
+#                     'success': True,
+#                     'session_id': session_id,
+#                     'video_path': str(dest),
+#                     'video_info': info,
+#                     'filename': filename,
+#                 })
+            
+#             raise HTTPException(400, detail="No video file found. Expected multipart/form-data with field 'video'")
+        
+#         # We have a proper file object, save it
+#         if not filename:
+#             filename = f"video_{session_id}.mp4"
+        
+#         dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+        
+#         # Save the file
+#         content = await video_file.read()
+#         with open(dest, 'wb') as f:
+#             f.write(content)
+        
+#         print(f"[API] Saved uploaded file: {filename} ({len(content)} bytes)")
+        
+#         # Extract video info
+#         info = {}
+#         if _HAS_CV2:
+#             try:
+#                 cap = cv2.VideoCapture(str(dest))
+#                 fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+#                 total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#                 info = {
+#                     'fps': round(fps, 2),
+#                     'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+#                     'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+#                     'total_frames': total,
+#                     'duration_seconds': round(total / fps, 2),
+#                 }
+#                 cap.release()
+#             except Exception as e:
+#                 print(f"[API] Could not extract video info: {e}")
+        
+#         sessions[session_id] = {
+#             'video_path': str(dest),
+#             'filename': filename,
+#             'status': 'uploaded',
+#             'progress': 0,
+#             'video_info': info,
+#             'pending_names': {},
+#         }
+        
+#         return JSONResponse({
+#             'success': True,
+#             'session_id': session_id,
+#             'video_path': str(dest),
+#             'video_info': info,
+#             'filename': filename,
+#         })
+        
+#     except Exception as e:
+#         print(f"[API] Upload error: {e}")
+#         traceback.print_exc()
+#         raise HTTPException(400, detail=f"Upload failed: {str(e)}")
 @app.post("/api/upload")
-async def upload_video(request: Request):
+async def upload_video(
+    video: UploadFile = File(...),  # Changed from Request to direct UploadFile
+):
     """
     React Native compatible upload endpoint.
     Accepts multipart/form-data with field name 'video'
@@ -312,98 +459,14 @@ async def upload_video(request: Request):
     session_id = str(uuid.uuid4())
     
     try:
-        # Try to parse as multipart/form-data
-        form = await request.form()
-        
-        # Look for the video file in the form data
-        video_file = None
-        filename = None
-        
-        # Check each field in the form
-        for field_name, field_value in form.items():
-            # Check if this field has file attributes (UploadFile)
-            if hasattr(field_value, 'filename') and hasattr(field_value, 'read'):
-                video_file = field_value
-                filename = field_value.filename
-                print(f"[API] Found file upload with field: {field_name}, filename: {filename}")
-                break
-            
-            # Handle React Native's special format where file info is in a dict
-            elif isinstance(field_value, str) and field_name == 'video':
-                try:
-                    # Try to parse as JSON (React Native sometimes stringifies)
-                    file_info = json.loads(field_value)
-                    if isinstance(file_info, dict) and 'uri' in file_info:
-                        # This would require a different approach - the file content isn't here
-                        print(f"[API] Received file info JSON: {file_info}")
-                        raise HTTPException(400, detail="File content missing. Please send as multipart/form-data with file")
-                except json.JSONDecodeError:
-                    pass
-        
-        # If we didn't find a file with attributes, check if there's a raw file in request
-        if not video_file:
-            # Try to get the file from the 'video' field specifically
-            video_file = form.get('video')
-            if video_file and hasattr(video_file, 'filename'):
-                filename = video_file.filename
-        
-        # If still no file, try to read raw body as file
-        if not video_file:
-            body = await request.body()
-            if body and len(body) > 0:
-                # Assume the raw body is the video file
-                filename = f"upload_{session_id}.mp4"
-                dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
-                with open(dest, 'wb') as f:
-                    f.write(body)
-                
-                print(f"[API] Saved raw upload as {filename}")
-                
-                # Extract video info
-                info = {}
-                if _HAS_CV2:
-                    try:
-                        cap = cv2.VideoCapture(str(dest))
-                        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-                        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                        info = {
-                            'fps': round(fps, 2),
-                            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                            'total_frames': total,
-                            'duration_seconds': round(total / fps, 2),
-                        }
-                        cap.release()
-                    except Exception as e:
-                        print(f"[API] Could not extract video info: {e}")
-                
-                sessions[session_id] = {
-                    'video_path': str(dest),
-                    'filename': filename,
-                    'status': 'uploaded',
-                    'progress': 0,
-                    'video_info': info,
-                    'pending_names': {},
-                }
-                
-                return JSONResponse({
-                    'success': True,
-                    'session_id': session_id,
-                    'video_path': str(dest),
-                    'video_info': info,
-                    'filename': filename,
-                })
-            
-            raise HTTPException(400, detail="No video file found. Expected multipart/form-data with field 'video'")
-        
-        # We have a proper file object, save it
-        if not filename:
-            filename = f"video_{session_id}.mp4"
-        
-        dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+        # Get filename from the upload
+        filename = video.filename or f"video_{session_id}.mp4"
         
         # Save the file
-        content = await video_file.read()
+        dest = UPLOAD_FOLDER / f"{session_id}_{filename}"
+        
+        # Read and save file content
+        content = await video.read()
         with open(dest, 'wb') as f:
             f.write(content)
         
@@ -448,7 +511,6 @@ async def upload_video(request: Request):
         print(f"[API] Upload error: {e}")
         traceback.print_exc()
         raise HTTPException(400, detail=f"Upload failed: {str(e)}")
-
 
 @app.post("/api/process")
 async def process_video(request: Request):
