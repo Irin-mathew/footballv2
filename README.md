@@ -122,7 +122,7 @@ Built with **React Native + Expo** for iOS, Android, and Web, featuring:
 <td width="50%">
 
 **Career Stats — Best vs Worst Match & Injury Risk Trend**
-<img src="images/Best__worst_matches.jpeg" width="100%">
+<img src="images/Best& worst matches.jpeg" width="100%">
 
 </td>
 </tr>
